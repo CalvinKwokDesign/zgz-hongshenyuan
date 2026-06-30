@@ -1,0 +1,578 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>正官庄红参元·力 | 山姆门店分布</title>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <style>
+    :root {
+      --red: #9B1B30;
+      --red-light: #B8243C;
+      --gold: #C9A96E;
+      --ink: #1C1C1C;
+      --muted: #7A7A7A;
+      --bg: #F5F5F5;
+      --card-bg: #fff;
+      --font-display: 'PingFang SC', 'Microsoft YaHei', sans-serif;
+    }
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html { font-size: 16px; }
+    body {
+      font-family: var(--font-display);
+      color: var(--ink);
+      background: var(--bg);
+      overflow-x: hidden;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    /* ===== HEADER ===== */
+    .header {
+      position: fixed;
+      top: 0; left: 0; right: 0;
+      z-index: 1000;
+      background: var(--red);
+      color: #fff;
+      padding: 0.75rem 1rem;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 0.75rem;
+    }
+    .header-back {
+      width: 36px; height: 36px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: rgba(255,255,255,0.15);
+      border-radius: 50%;
+      color: #fff;
+      text-decoration: none;
+      flex-shrink: 0;
+      -webkit-tap-highlight-color: transparent;
+    }
+    .header-back svg {
+      width: 20px; height: 20px;
+    }
+    .header-title {
+      font-size: 1.05rem;
+      font-weight: 600;
+      flex: 1;
+      text-align: center;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .header-right {
+      width: 36px;
+      flex-shrink: 0;
+    }
+
+    /* ===== SEARCH ===== */
+    .search-bar {
+      position: fixed;
+      top: 52px; left: 0; right: 0;
+      z-index: 999;
+      background: #fff;
+      padding: 0.6rem 1rem;
+      display: flex;
+      gap: 0.5rem;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+    }
+    .search-input-wrap {
+      flex: 1;
+      position: relative;
+    }
+    .search-input-wrap svg {
+      position: absolute;
+      left: 0.7rem;
+      top: 50%;
+      transform: translateY(-50%);
+      width: 18px; height: 18px;
+      color: var(--muted);
+    }
+    .search-input {
+      width: 100%;
+      padding: 0.55rem 0.7rem 0.55rem 2.2rem;
+      border: 1px solid #E8E3DB;
+      border-radius: 100px;
+      font-size: 0.9rem;
+      outline: none;
+      background: #FAFAFA;
+      transition: border-color 0.2s;
+    }
+    .search-input:focus { border-color: var(--gold); }
+    .locate-btn {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.3rem;
+      padding: 0.55rem 0.9rem;
+      background: var(--red);
+      color: #fff;
+      border: none;
+      border-radius: 100px;
+      font-size: 0.8rem;
+      font-weight: 600;
+      white-space: nowrap;
+      cursor: pointer;
+      flex-shrink: 0;
+    }
+    .locate-btn:active { opacity: 0.85; }
+    .locate-btn svg { width: 16px; height: 16px; }
+
+    /* ===== MAP ===== */
+    #map {
+      position: fixed;
+      top: 110px; left: 0; right: 0;
+      height: calc(100vh - 110px - 180px);
+      z-index: 1;
+    }
+    .leaflet-popup-content-wrapper {
+      border-radius: 12px;
+      padding: 0;
+      overflow: hidden;
+    }
+    .leaflet-popup-content {
+      margin: 0;
+      width: 240px !important;
+    }
+    .popup-card {
+      padding: 0.75rem;
+    }
+    .popup-card h4 {
+      font-size: 0.95rem;
+      font-weight: 700;
+      color: var(--red);
+      margin-bottom: 0.3rem;
+    }
+    .popup-card p {
+      font-size: 0.75rem;
+      color: var(--muted);
+      line-height: 1.5;
+      margin-bottom: 0.15rem;
+    }
+    .popup-card .time {
+      font-size: 0.72rem;
+      color: var(--gold);
+      font-weight: 600;
+    }
+
+    /* ===== STORE LIST ===== */
+    .store-list {
+      position: fixed;
+      bottom: 0; left: 0; right: 0;
+      height: 180px;
+      background: #fff;
+      border-radius: 16px 16px 0 0;
+      box-shadow: 0 -4px 20px rgba(0,0,0,0.08);
+      z-index: 998;
+      display: flex;
+      flex-direction: column;
+    }
+    .store-list-header {
+      padding: 0.6rem 1rem;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      border-bottom: 1px solid #F0F0F0;
+    }
+    .store-list-header h3 {
+      font-size: 0.85rem;
+      font-weight: 600;
+      color: var(--ink);
+    }
+    .store-list-header span {
+      font-size: 0.75rem;
+      color: var(--muted);
+    }
+    .store-list-scroll {
+      flex: 1;
+      overflow-x: auto;
+      overflow-y: hidden;
+      display: flex;
+      gap: 0.6rem;
+      padding: 0.6rem 1rem;
+      scroll-snap-type: x mandatory;
+      -webkit-overflow-scrolling: touch;
+    }
+    .store-list-scroll::-webkit-scrollbar { height: 3px; }
+    .store-list-scroll::-webkit-scrollbar-thumb {
+      background: var(--red);
+      border-radius: 2px;
+    }
+    .store-card {
+      flex-shrink: 0;
+      width: 220px;
+      background: #FAFAFA;
+      border-radius: 12px;
+      padding: 0.75rem;
+      border: 1px solid #F0F0F0;
+      scroll-snap-align: start;
+      cursor: pointer;
+      transition: transform 0.2s, border-color 0.2s;
+    }
+    .store-card:active { transform: scale(0.97); }
+    .store-card.active {
+      border-color: var(--gold);
+      background: #FFFDF5;
+    }
+    .store-card h4 {
+      font-size: 0.85rem;
+      font-weight: 700;
+      color: var(--ink);
+      margin-bottom: 0.25rem;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .store-card .city {
+      font-size: 0.72rem;
+      color: var(--red);
+      font-weight: 600;
+      margin-bottom: 0.2rem;
+    }
+    .store-card p {
+      font-size: 0.7rem;
+      color: var(--muted);
+      line-height: 1.4;
+      display: -webkit-box;
+      -webkit-line-clamp: 2;
+      -webkit-box-orient: vertical;
+      overflow: hidden;
+    }
+    .store-card .distance {
+      font-size: 0.72rem;
+      color: var(--gold);
+      font-weight: 600;
+      margin-top: 0.3rem;
+    }
+
+    /* ===== NO RESULT ===== */
+    .no-result {
+      display: none;
+      position: fixed;
+      top: 50%; left: 50%;
+      transform: translate(-50%, -50%);
+      text-align: center;
+      z-index: 100;
+    }
+    .no-result.show { display: block; }
+    .no-result p {
+      font-size: 0.9rem;
+      color: var(--muted);
+    }
+
+    /* ===== TOAST ===== */
+    .toast {
+      position: fixed;
+      top: 120px; left: 50%;
+      transform: translateX(-50%) translateY(-20px);
+      background: rgba(0,0,0,0.75);
+      color: #fff;
+      padding: 0.6rem 1.2rem;
+      border-radius: 100px;
+      font-size: 0.85rem;
+      z-index: 2000;
+      opacity: 0;
+      pointer-events: none;
+      transition: all 0.3s ease;
+    }
+    .toast.show {
+      opacity: 1;
+      transform: translateX(-50%) translateY(0);
+    }
+
+    /* ===== LEGEND ===== */
+    .legend {
+      position: fixed;
+      top: 120px; right: 10px;
+      z-index: 500;
+      background: rgba(255,255,255,0.92);
+      backdrop-filter: blur(8px);
+      padding: 0.4rem 0.6rem;
+      border-radius: 8px;
+      font-size: 0.7rem;
+      color: var(--muted);
+      box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+    }
+    .legend-item {
+      display: flex;
+      align-items: center;
+      gap: 0.3rem;
+      margin-bottom: 0.2rem;
+    }
+    .legend-item:last-child { margin-bottom: 0; }
+    .legend-dot {
+      width: 8px; height: 8px;
+      border-radius: 50%;
+    }
+    .legend-dot.sam { background: var(--red); }
+    .legend-dot.you { background: var(--gold); }
+  </style>
+</head>
+<body>
+
+  <!-- Header -->
+  <header class="header">
+    <a href="zgz-hongshen.html" class="header-back" aria-label="返回">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"></polyline></svg>
+    </a>
+    <h1 class="header-title">正官庄红参元·力 山姆门店分布</h1>
+    <div class="header-right"></div>
+  </header>
+
+  <!-- Search -->
+  <div class="search-bar">
+    <div class="search-input-wrap">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+      <input type="text" class="search-input" id="searchInput" placeholder="搜索城市或门店名称...">
+    </div>
+    <button class="locate-btn" id="locateBtn">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path><circle cx="12" cy="10" r="3"></circle></svg>
+      最近门店
+    </button>
+  </div>
+
+  <!-- Legend -->
+  <div class="legend">
+    <div class="legend-item"><div class="legend-dot sam"></div>山姆门店</div>
+    <div class="legend-item"><div class="legend-dot you"></div>我的位置</div>
+  </div>
+
+  <!-- Map -->
+  <div id="map"></div>
+
+  <!-- Store List -->
+  <div class="store-list">
+    <div class="store-list-header">
+      <h3>门店列表</h3>
+      <span id="storeCount">共 0 家</span>
+    </div>
+    <div class="store-list-scroll" id="storeList"></div>
+  </div>
+
+  <!-- No Result -->
+  <div class="no-result" id="noResult">
+    <p>未找到匹配的门店</p>
+  </div>
+
+  <!-- Toast -->
+  <div class="toast" id="toast"></div>
+
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script>
+
+    // ===== STORE DATA =====
+    const stores = [
+      { name: "深圳龙岗店", city: "深圳", address: "广东省深圳市龙岗区黄阁南路1号星河时代购物公园", lat: 22.720, lng: 114.228, time: "9:00 - 22:00" },
+      { name: "深圳龙华店", city: "深圳", address: "广东省深圳市龙华区龙华街道景龙社区东环一路与梅龙路交汇处", lat: 22.655, lng: 114.032, time: "9:00 - 22:00" },
+      { name: "深圳福田店", city: "深圳", address: "广东省深圳市福田区侨香路与农林路交界东南深国投商业中心", lat: 22.555, lng: 114.012, time: "7:30 - 22:00" },
+      { name: "深圳前海店", city: "深圳", address: "广东省深圳市南山区桂湾三路1号前海山姆会员商店", lat: 22.525, lng: 113.900, time: "9:00 - 22:00" },
+      { name: "北京亦庄店", city: "北京", address: "北京市大兴区经济技术开发区文化园东路6号亦庄创意生活广场", lat: 39.806, lng: 116.506, time: "8:00 - 22:00" },
+      { name: "北京顺义店", city: "北京", address: "北京市顺义区后沙峪镇安平街5号院2号楼", lat: 40.095, lng: 116.560, time: "8:00 - 22:00" },
+      { name: "北京石景山店", city: "北京", address: "北京市石景山区阜石路158号", lat: 39.928, lng: 116.222, time: "8:00 - 22:00" },
+      { name: "北京大兴店", city: "北京", address: "北京市大兴区西红门镇欣雅街16号院2号楼", lat: 39.790, lng: 116.330, time: "8:00 - 22:00" },
+      { name: "广州番禺店", city: "广州", address: "广东省广州市番禺区南村镇里仁洞村迎宾路东侧海印又一城", lat: 23.005, lng: 113.370, time: "9:00 - 22:00" },
+      { name: "广州东店", city: "广州", address: "广东省广州市天河区黄埔大道东657、659、661号", lat: 23.120, lng: 113.410, time: "9:00 - 22:00" },
+      { name: "上海浦东店", city: "上海", address: "上海市浦东新区高科西路2110号", lat: 31.185, lng: 121.520, time: "8:00 - 22:00" },
+      { name: "上海青浦店", city: "上海", address: "上海市青浦区赵巷镇业锦路483弄", lat: 31.160, lng: 121.280, time: "8:00 - 22:00" },
+      { name: "上海嘉定店", city: "上海", address: "上海市嘉定区惠亚路117号", lat: 31.380, lng: 121.260, time: "8:00 - 22:00" },
+      { name: "上海真如店", city: "上海", address: "上海市普陀区真华南路335号", lat: 31.245, lng: 121.405, time: "8:00 - 22:00" },
+      { name: "上海宝山店", city: "上海", address: "上海市宝山区聚丰园路165号", lat: 31.315, lng: 121.420, time: "8:00 - 22:00" },
+      { name: "上海外高桥店", city: "上海", address: "上海市浦东新区万安街599号", lat: 31.315, lng: 121.585, time: "8:00 - 22:00" },
+      { name: "珠海香洲店", city: "珠海", address: "广东省珠海市香洲区明珠北路338号珠海印象城购物中心", lat: 22.275, lng: 113.515, time: "9:00 - 22:00" },
+      { name: "福州鼓楼店", city: "福州", address: "福建省福州市鼓楼区杨桥西路128号", lat: 26.090, lng: 119.280, time: "8:00 - 22:00" },
+      { name: "福州仓山店", city: "福州", address: "福建省福州市仓山区城门镇万仁路6号", lat: 26.015, lng: 119.350, time: "8:00 - 22:00" },
+      { name: "厦门自贸区店", city: "厦门", address: "福建省厦门市湖里区虎屿北路9号1号区域", lat: 24.520, lng: 118.105, time: "9:00 - 22:00" },
+      { name: "武汉汉口店", city: "武汉", address: "湖北省武汉市硚口区解放大道387号南国西汇城市广场", lat: 30.585, lng: 114.235, time: "9:00 - 22:00" },
+      { name: "武汉光谷店", city: "武汉", address: "湖北省武汉市东湖新技术开发区高新大道456号S2号楼", lat: 30.505, lng: 114.405, time: "9:00 - 22:00" },
+      { name: "汉阳店", city: "武汉", address: "湖北省武汉市汉阳区连通港路88号", lat: 30.520, lng: 114.195, time: "9:00 - 22:00" },
+      { name: "长沙雨花店", city: "长沙", address: "湖南省长沙市雨花区劳动东路268号", lat: 28.155, lng: 113.035, time: "9:00 - 22:00" },
+      { name: "长沙岳麓店", city: "长沙", address: "湖南省长沙市岳麓区银盆岭路228号保利西海岸E区", lat: 28.235, lng: 112.955, time: "9:00 - 22:00" },
+      { name: "南京雨花台店", city: "南京", address: "江苏省南京市雨花台区软件大道109号", lat: 31.995, lng: 118.770, time: "9:00 - 22:00" },
+      { name: "南京江北店", city: "南京", address: "江苏省南京市浦口区顶山街道江北兴隆路21号", lat: 32.115, lng: 118.685, time: "9:00 - 22:00" },
+      { name: "常州新北店", city: "常州", address: "江苏省常州市新北区通江中路588号589号", lat: 31.785, lng: 119.975, time: "9:00 - 22:00" },
+      { name: "苏州金鸡湖店", city: "苏州", address: "江苏省苏州市工业园区西华林街88号", lat: 31.315, lng: 120.735, time: "8:00 - 22:00" },
+      { name: "苏州木渎店", city: "苏州", address: "江苏省苏州市吴中区长江路18号", lat: 31.275, lng: 120.515, time: "8:00 - 22:00" },
+      { name: "苏州昆山店", city: "苏州", address: "江苏省苏州市昆山市中华园路与珑庭路交界处", lat: 31.385, lng: 120.945, time: "9:00 - 22:00" },
+      { name: "南通崇川店", city: "南通", address: "江苏省南通市港闸区深南路69号", lat: 32.035, lng: 120.805, time: "9:00 - 22:00" },
+      { name: "南昌红谷滩店", city: "南昌", address: "江西省南昌市红谷滩区丰和南大道1955号", lat: 28.655, lng: 115.875, time: "9:00 - 22:00" },
+      { name: "沈阳和平店", city: "沈阳", address: "辽宁省沈阳市和平区长白南路279号", lat: 41.735, lng: 123.405, time: "9:00 - 21:00" },
+      { name: "大连香炉礁店", city: "大连", address: "辽宁省大连市西岗区香炉礁街道海达北街42号", lat: 38.925, lng: 121.585, time: "9:00 - 21:00" },
+      { name: "成都华侨城店", city: "成都", address: "四川省成都市金牛区北三环路一段223号", lat: 30.725, lng: 104.055, time: "9:00 - 22:00" },
+      { name: "成都天府新区店", city: "成都", address: "四川省成都市双流区麓山大道二段199号", lat: 30.515, lng: 104.075, time: "9:00 - 22:00" },
+      { name: "天津梅江店", city: "天津", address: "天津市西青区汇川路221号一层", lat: 39.055, lng: 117.215, time: "8:00 - 22:00" },
+      { name: "杭州西溪店", city: "杭州", address: "浙江省杭州市余杭区五常大道1号P1-A001", lat: 30.255, lng: 120.035, time: "9:00 - 22:00" },
+      { name: "杭州北店", city: "杭州", address: "浙江省杭州市上城区大农港路1238号", lat: 30.355, lng: 120.205, time: "9:00 - 22:00" },
+      { name: "杭州萧山店", city: "杭州", address: "浙江省杭州市萧山区盈丰街道飞虹路1408号", lat: 30.235, lng: 120.255, time: "9:00 - 22:00" },
+      { name: "宁波江北店", city: "宁波", address: "浙江省宁波市江北区清河路269号", lat: 29.895, lng: 121.485, time: "9:00 - 22:00" },
+      { name: "宁波鄞州店", city: "宁波", address: "浙江省宁波市鄞州区钟公庙街道欢乐海岸路17号", lat: 29.825, lng: 121.555, time: "9:00 - 22:00" },
+      { name: "重庆两江新区店", city: "重庆", address: "重庆市渝北区礼慈路15号龙湖礼嘉天街B馆", lat: 29.685, lng: 106.525, time: "9:00 - 22:00" },
+      { name: "东莞店", city: "东莞", address: "广东省东莞市寮步镇", lat: 22.865, lng: 113.845, time: "9:00 - 22:00" },
+      { name: "惠州店", city: "惠州", address: "广东省惠州市惠城区", lat: 23.085, lng: 114.415, time: "9:00 - 22:00" },
+      { name: "无锡店", city: "无锡", address: "江苏省无锡市滨湖区", lat: 31.565, lng: 120.305, time: "9:00 - 22:00" },
+      { name: "嘉兴店", city: "嘉兴", address: "浙江省嘉兴市南湖区", lat: 30.745, lng: 120.755, time: "9:00 - 22:00" },
+      { name: "合肥店", city: "合肥", address: "安徽省合肥市蜀山区", lat: 31.865, lng: 117.275, time: "9:00 - 22:00" },
+      { name: "济南店", city: "济南", address: "山东省济南市历下区", lat: 36.665, lng: 117.020, time: "9:00 - 22:00" },
+      { name: "青岛店", city: "青岛", address: "山东省青岛市市南区", lat: 36.075, lng: 120.385, time: "9:00 - 22:00" },
+      { name: "石家庄店", city: "石家庄", address: "河北省石家庄市裕华区", lat: 38.035, lng: 114.515, time: "9:00 - 22:00" },
+      { name: "台州店", city: "台州", address: "浙江省台州市椒江区", lat: 28.655, lng: 121.425, time: "9:00 - 22:00" },
+      { name: "佛山店", city: "佛山", address: "广东省佛山市南海区", lat: 23.045, lng: 113.135, time: "9:00 - 22:00" },
+      { name: "中山店", city: "中山", address: "广东省中山市东区", lat: 22.525, lng: 113.385, time: "9:00 - 22:00" },
+      { name: "扬州店", city: "扬州", address: "江苏省扬州市邗江区", lat: 32.395, lng: 119.415, time: "9:00 - 22:00" },
+      { name: "张家港店", city: "苏州", address: "江苏省张家港市", lat: 31.885, lng: 120.555, time: "9:00 - 22:00" },
+      { name: "北京昌平店", city: "北京", address: "北京市昌平区", lat: 40.185, lng: 116.235, time: "8:00 - 22:00" },
+      { name: "深圳宝安店", city: "深圳", address: "广东省深圳市宝安区", lat: 22.575, lng: 113.885, time: "9:00 - 22:00" },
+      { name: "上海松江店", city: "上海", address: "上海市松江区", lat: 31.035, lng: 121.225, time: "8:00 - 22:00" },
+      { name: "武汉江岸店", city: "武汉", address: "湖北省武汉市江岸区", lat: 30.595, lng: 114.305, time: "9:00 - 22:00" },
+      { name: "温州店", city: "温州", address: "浙江省温州市鹿城区", lat: 28.015, lng: 120.655, time: "9:00 - 22:00" },
+      { name: "泉州晋江店", city: "泉州", address: "福建省泉州市晋江市", lat: 24.785, lng: 118.555, time: "9:00 - 22:00" },
+      { name: "昆明店", city: "昆明", address: "云南省昆明市官渡区", lat: 25.045, lng: 102.705, time: "9:00 - 22:00" },
+      { name: "西安店", city: "西安", address: "陕西省西安市雁塔区", lat: 34.265, lng: 108.945, time: "9:00 - 22:00" },
+      { name: "郑州店", city: "郑州", address: "河南省郑州市金水区", lat: 34.745, lng: 113.625, time: "9:00 - 22:00" },
+      { name: "贵阳店", city: "贵阳", address: "贵州省贵阳市观山湖区", lat: 26.585, lng: 106.715, time: "9:00 - 22:00" },
+    ];
+
+    // ===== MAP INIT =====
+    const map = L.map('map', { zoomControl: false }).setView([31.2304, 121.4737], 5);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      attribution: '&copy; OpenStreetMap',
+      maxZoom: 18,
+    }).addTo(map);
+    L.control.zoom({ position: 'bottomright' }).addTo(map);
+
+    // ===== MARKERS =====
+    const markers = [];
+    let userMarker = null;
+
+    function createCustomIcon(color) {
+      return L.divIcon({
+        className: 'custom-marker',
+        html: `<svg width="28" height="36" viewBox="0 0 28 36" fill="none"><path d="M14 0C6.268 0 0 6.268 0 14c0 10.5 14 22 14 22s14-11.5 14-22c0-7.732-6.268-14-14-14z" fill="${color}"/><circle cx="14" cy="14" r="5" fill="white"/></svg>`,
+        iconSize: [28, 36],
+        iconAnchor: [14, 36],
+        popupAnchor: [0, -36],
+      });
+    }
+
+    function addStoreMarkers(storeList) {
+      markers.forEach(m => map.removeLayer(m));
+      markers.length = 0;
+      storeList.forEach(s => {
+        const marker = L.marker([s.lat, s.lng], { icon: createCustomIcon('#9B1B30') })
+          .addTo(map)
+          .bindPopup(`<div class="popup-card"><h4>${s.city} · ${s.name}</h4><p>${s.address}</p><p class="time">营业时间：${s.time}</p></div>`);
+        marker.storeData = s;
+        markers.push(marker);
+      });
+    }
+
+    // ===== LIST RENDER =====
+    function renderList(storeList, userLat, userLng) {
+      const listEl = document.getElementById('storeList');
+      const countEl = document.getElementById('storeCount');
+      const noResult = document.getElementById('noResult');
+      listEl.innerHTML = '';
+      countEl.textContent = `共 ${storeList.length} 家`;
+
+      if (storeList.length === 0) {
+        noResult.classList.add('show');
+        return;
+      }
+      noResult.classList.remove('show');
+
+      storeList.forEach((s, i) => {
+        let distText = '';
+        if (userLat != null && userLng != null) {
+          const d = getDistance(userLat, userLng, s.lat, s.lng);
+          distText = d < 1 ? `${(d * 1000).toFixed(0)}m` : `${d.toFixed(1)}km`;
+        }
+        const card = document.createElement('div');
+        card.className = 'store-card';
+        card.innerHTML = `<div class="city">${s.city}</div><h4>${s.name}</h4><p>${s.address}</p>${distText ? `<div class="distance">距您约 ${distText}</div>` : ''}`;
+        card.addEventListener('click', () => {
+          map.setView([s.lat, s.lng], 14);
+          markers.forEach(m => { if (m.storeData === s) m.openPopup(); });
+          document.querySelectorAll('.store-card').forEach(c => c.classList.remove('active'));
+          card.classList.add('active');
+        });
+        listEl.appendChild(card);
+      });
+    }
+
+    // ===== DISTANCE =====
+    function getDistance(lat1, lng1, lat2, lng2) {
+      const R = 6371;
+      const dLat = (lat2 - lat1) * Math.PI / 180;
+      const dLng = (lng2 - lng1) * Math.PI / 180;
+      const a = Math.sin(dLat / 2) ** 2 + Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * Math.sin(dLng / 2) ** 2;
+      return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+    }
+
+    // ===== SEARCH =====
+    document.getElementById('searchInput').addEventListener('input', e => {
+      const kw = e.target.value.trim().toLowerCase();
+      if (!kw) {
+        addStoreMarkers(stores);
+        renderList(stores);
+        map.setView([31.2304, 121.4737], 5);
+        return;
+      }
+      const filtered = stores.filter(s =>
+        s.name.toLowerCase().includes(kw) ||
+        s.city.toLowerCase().includes(kw) ||
+        s.address.toLowerCase().includes(kw)
+      );
+      addStoreMarkers(filtered);
+      renderList(filtered);
+      if (filtered.length > 0) {
+        const group = new L.featureGroup(markers);
+        map.fitBounds(group.getBounds().pad(0.2));
+      }
+    });
+
+    // ===== LOCATE =====
+    document.getElementById('locateBtn').addEventListener('click', () => {
+      showToast('正在定位...');
+      if (!navigator.geolocation) {
+        showToast('您的设备不支持定位');
+        return;
+      }
+      navigator.geolocation.getCurrentPosition(pos => {
+        const uLat = pos.coords.latitude;
+        const uLng = pos.coords.longitude;
+        if (userMarker) map.removeLayer(userMarker);
+        userMarker = L.marker([uLat, uLng], { icon: createCustomIcon('#C9A96E') })
+          .addTo(map)
+          .bindPopup('<div class="popup-card"><h4>我的位置</h4></div>')
+          .openPopup();
+
+        const sorted = [...stores].map(s => ({
+          ...s,
+          dist: getDistance(uLat, uLng, s.lat, s.lng)
+        })).sort((a, b) => a.dist - b.dist);
+
+        addStoreMarkers(sorted);
+        renderList(sorted, uLat, uLng);
+        map.setView([uLat, uLng], 10);
+        showToast(`最近门店：${sorted[0].city}${sorted[0].name}，距您约${sorted[0].dist < 1 ? (sorted[0].dist * 1000).toFixed(0) + 'm' : sorted[0].dist.toFixed(1) + 'km'}`);
+      }, () => {
+        showToast('定位失败，请检查定位权限');
+      }, { enableHighAccuracy: true, timeout: 10000 });
+    });
+
+    // ===== TOAST =====
+    function showToast(msg) {
+      const t = document.getElementById('toast');
+      t.textContent = msg;
+      t.classList.add('show');
+      setTimeout(() => t.classList.remove('show'), 3000);
+    }
+
+    // ===== INIT =====
+    addStoreMarkers(stores);
+    renderList(stores);
+  </script>
+</body>
+</html>

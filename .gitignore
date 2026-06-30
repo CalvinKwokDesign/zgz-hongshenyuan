@@ -1,0 +1,16 @@
+# Preview/draft files (not needed in production)
+../compress_images.py
+../preview_*.png
+../sales_v*.png
+../hero_v*.png
+../product_v*.png
+../sales_screen_*.png
+
+# OS files
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Editor
+.vscode/
+*.swp
